@@ -1,44 +1,27 @@
-import {
-  Controller,
-  Get,
-  Post,
-  UseGuards,
-  UnauthorizedException,
-  Body,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Req } from '@nestjs/common';
 
 import { AuthService } from './auth.service';
+import { TokenDto } from './dto/token.dto';
+import { SignInDtoDto } from './dto/signInDto.dto';
+import { Public } from '../common/decorators';
 
 @Controller()
 export class AuthController {
-  constructor(private auth: AuthService) {}
+  constructor(private authService: AuthService) {}
 
-  /**
-   * See test/e2e/jwt-auth.spec.ts
-   */
-  @UseGuards(LocalAuthGuard)
-  @Post('jwt/login')
-  public jwtLogin(@ReqUser() user: Payload): JwtSign {
-    return this.auth.jwtSign(user);
+  @Public()
+  @Post('sign-in')
+  public async signIn(@Body() dto: SignInDtoDto): Promise<TokenDto> {
+    return await this.authService.signIn(dto);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Get('jwt/check')
-  public jwtCheck(@ReqUser() user: Payload): Payload {
-    return user;
+  @Post('refresh-token')
+  public updateTokens(@Body('refreshToken') token: string): TokenDto {
+    return this.authService.refreshToken(token);
   }
 
-  // Only verify is performed without checking the expiration of the access_token.
-  @UseGuards(JwtVerifyGuard)
-  @Post('jwt/refresh')
-  public jwtRefresh(
-    @ReqUser() user: Payload,
-    @Body('refresh_token') token?: string,
-  ): JwtSign {
-    if (!token || !this.auth.validateRefreshToken(user, token)) {
-      throw new UnauthorizedException('InvalidRefreshToken');
-    }
-
-    return this.auth.jwtSign(user);
+  @Get('me')
+  public getMe(@Req() request): TokenDto {
+    return request.user;
   }
 }
